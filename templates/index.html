@@ -1,0 +1,534 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hive工具箱</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="/static/layui/css/layui.css">
+</head>
+<body>
+    <fieldset class="layui-elem-field layui-field-title" style="margin-top: 20px;">
+  <legend style="margin-bottom: 20px; margin-top: 20px; text-align: center;" >HIVE脚本解析与自动转换工具集</legend>
+</fieldset>
+
+  <div class="layui-row">
+   {# <div class="layui-col-xs4 layui-col-lg-offset1 layui-col-xs-offset1">
+        <fieldset class="layui-elem-field layui-field-title" style="margin-top: 30px;">
+          <legend>多文件上传</legend>
+        </fieldset>
+
+        <div class="layui-upload">
+          <button type="button" class="layui-btn layui-btn-normal" id="testList">选择多文件</button>
+          <div class="layui-upload-list" style="max-width: 1000px;">
+            <table class="layui-table">
+              <colgroup>
+                <col>
+                <col width="150">
+                <col width="260">
+                <col width="150">
+              </colgroup>
+              <thead>
+                <tr><th>文件名</th>
+                <th>大小</th>
+                <th>上传进度</th>
+                <th>操作</th>
+              </tr></thead>
+              <tbody id="demoList"></tbody>
+            </table>
+          </div>
+          <button type="button" class="layui-btn" id="testListAction">开始上传</button>
+        </div>
+    </div>#}
+
+
+
+    <div class="layui-col-xs3 layui-col-xs-offset1">
+         <fieldset class="layui-elem-field layui-field-title" style="margin-top: 30px;">
+          <legend>拖拽上传</legend>
+        </fieldset>
+
+        <div class="layui-upload-drag" id="test10">
+          <i class="layui-icon"></i>
+          <p>点击上传，或将文件拖拽到此处</p>
+          <div class="layui-hide" id="uploadDemoView">
+            <hr>
+            <img src="" alt="上传成功后渲染" style="max-width: 196px">
+          </div>
+        </div>
+    </div>
+    <div class="layui-col-xs6 layui-col-lg-offset1 layui-col-xs-offset1">
+         <fieldset class="layui-elem-field layui-field-title" style="margin-top: 30px;">
+          <legend>直接粘贴，字符串解析</legend>
+        </fieldset>
+        <form class="layui-form" action="/parseSqlFromStr" method="post" >
+         <div class="layui-form-item layui-form-text">
+            <label class="layui-form-label">Hive脚本</label>
+            <div class="layui-input-block">
+              <textarea id="sql" name="sql" placeholder="请输入内容" class="layui-textarea" maxlength="20000000" rows="20"></textarea>
+            </div>
+          </div>
+
+          <div class="layui-form-item">
+            <div class="layui-input-block">
+              <button type="submit" class="layui-btn" lay-submit="" lay-filter="demo1">立即提交</button>
+              <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </div>
+          </div>
+        </form>
+    </div>
+
+    <div class="layui-col-xs6 layui-col-lg-offset2 layui-col-xs-offset2">
+              <div class="layui-col-md10">
+                 <fieldset class="layui-elem-field layui-field-title" style="margin-top: 30px;">
+                  <legend>示例</legend>
+                </fieldset>
+                  <div class="layui-btn-container">
+                  <button  lay-active="e1"  class="layui-btn layui-btn-primary layui-border-green">ER图与Excel示例SQL</button>
+                  <button  lay-active="e2" class="layui-btn layui-btn-primary layui-border-black">表结构生成代码示例SQL</button>
+                  </div>
+              </div>
+            </div>
+      {#<div class="layui-col-xs8 layui-col-lg-offset2 layui-col-xs-offset2">
+         <fieldset class="layui-elem-field layui-field-title" style="margin-top: 30px;">
+          <legend>Bug 提交</legend>
+        </fieldset>
+        <form class="layui-form" action="/uploadbug" method="post" >
+         <div class="layui-form-item layui-form-text">
+            <label class="layui-form-label">   提交解析失败的SQL  </label>
+            <div class="layui-input-block">
+              <textarea name="sql" placeholder="请输入内容" class="layui-textarea" maxlength="20000000" rows="20"></textarea>
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <div class="layui-input-block">
+              <button type="submit" class="layui-btn" lay-submit="" lay-filter="demo1">立即提交</button>
+              <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </div>
+          </div>
+        </form>
+    </div>#}
+
+
+  </div>
+
+<script src="/static/layui/layui.js"></script>
+<script>
+layui.use(['upload', 'element', 'layer'], function(){
+  var $ = layui.jquery
+  ,upload = layui.upload
+  ,element = layui.element
+  ,layer = layui.layer;
+
+  //演示多文件列表
+  var uploadListIns = upload.render({
+    elem: '#testList'
+    ,elemList: $('#demoList') //列表元素对象
+    ,url: 'https://httpbin.org/post'
+    ,accept: 'file'
+    ,multiple: true
+    ,number: 3
+    ,auto: false
+    ,bindAction: '#testListAction'
+    ,choose: function(obj){
+      var that = this;
+      var files = this.files = obj.pushFile(); //将每次选择的文件追加到文件队列
+      //读取本地文件
+      obj.preview(function(index, file, result){
+        var tr = $(['<tr id="upload-'+ index +'">'
+          ,'<td>'+ file.name +'</td>'
+          ,'<td>'+ (file.size/1014).toFixed(1) +'kb</td>'
+          ,'<td><div class="layui-progress" lay-filter="progress-demo-'+ index +'"><div class="layui-progress-bar" lay-percent=""></div></div></td>'
+          ,'<td>'
+            ,'<button class="layui-btn layui-btn-xs demo-reload layui-hide">重传</button>'
+            ,'<button class="layui-btn layui-btn-xs layui-btn-danger demo-delete">删除</button>'
+          ,'</td>'
+        ,'</tr>'].join(''));
+
+        //单个重传
+        tr.find('.demo-reload').on('click', function(){
+          obj.upload(index, file);
+        });
+
+        //删除
+        tr.find('.demo-delete').on('click', function(){
+          delete files[index]; //删除对应的文件
+          tr.remove();
+          uploadListIns.config.elem.next()[0].value = ''; //清空 input file 值，以免删除后出现同名文件不可选
+        });
+
+        that.elemList.append(tr);
+        element.render('progress'); //渲染新加的进度条组件
+      });
+    }
+    ,done: function(res, index, upload){ //成功的回调
+      var that = this;
+      //if(res.code == 0){ //上传成功
+        var tr = that.elemList.find('tr#upload-'+ index)
+        ,tds = tr.children();
+        tds.eq(3).html(''); //清空操作
+        delete this.files[index]; //删除文件队列已经上传成功的文件
+        return;
+      //}
+      this.error(index, upload);
+    }
+    ,allDone: function(obj){ //多文件上传完毕后的状态回调
+      console.log(obj)
+    }
+    ,error: function(index, upload){ //错误回调
+      var that = this;
+      var tr = that.elemList.find('tr#upload-'+ index)
+      ,tds = tr.children();
+      tds.eq(3).find('.demo-reload').removeClass('layui-hide'); //显示重传
+    }
+    ,progress: function(n, elem, e, index){
+      element.progress('progress-demo-'+ index, n + '%'); //执行进度条。n 即为返回的进度百分比
+    }
+  });
+
+  //拖拽上传
+  upload.render({
+    elem: '#test10'
+    ,url: 'http://{{ ipaddr }}:5000/upload_file' //改成您自己的上传接口 'http://127.0.0.1:5000/upload_file'
+      ,accept: 'file'
+    ,done: function(res){
+      layer.msg('上传成功');
+      //console.log(res)
+      window.location.href="/main";
+    }
+  });
+
+   var util = layui.util
+    {#var test1 = $("input.test1").val();#}
+    {#$("#sql").val("SUM(IF(NVL({0}, '')  <> ''),1,0)) as {0}");#}
+    function setinput_str(str){
+         $("#sql").val(str);
+    }
+var tmpl =
+   `
+   ----------------------------------------------
+-- @ Output：my_dwd.dwd_erp_hr_df_tmp01
+-- @ Desc：人资信息
+-- @ Primary Key：fid
+-- @ Author：admin
+-- @ Create Time：2021-6-24
+-- @ Modify Time：(admin，2021-6-24，创建表)
+-- @ Comment：人资信息
+----------------------------------------------
+
+CREATE TABLE IF NOT EXISTS my_dwd.dwd_erp_hr_df_tmp01(
+  fid                              string COMMENT '员工的系统编号'
+    ,feffdt                  string COMMENT '生效日期'
+    ,fnumber                 string COMMENT '员工工号'
+ ,t_bd_person_fname_l2           string COMMENT '姓名'
+ ,cflastname                       string COMMENT '姓'
+ ,cfgivenname                   string COMMENT '名'
+ ,fidcardno                       string COMMENT '身份证号码'
+ ,fpassportno                   string COMMENT '护照号码'
+ ,fidcardissueorg               string COMMENT '证件签发机关'
+ ,fidcardbegindate               string COMMENT '证件开始日期'
+ ,fidcardenddate                   string COMMENT '证件截止日期'
+ ,fgender                       string COMMENT '性别'
+ ,fbirthday                       string COMMENT '出生日期'
+ ,fwedid                           string COMMENT '婚姻状况ID'
+ ,fpoliticalfaceid               string COMMENT '政治面貌ID'
+ ,political_fname_l2               string COMMENT '政治面貌中文值'
+ ,fnationalityid                   string COMMENT '国籍ID'
+ ,nationality_fnamel2           string COMMENT '国籍中文名称'
+ ,ffolkid                       string COMMENT '民族ID'
+ ,folk_fnamel2                   string COMMENT '民族中文名称'
+ ,fnativeplace_l2               string COMMENT '籍贯'
+ ,fcell                           string COMMENT '手机号码'
+ ,fregresidenceid               string COMMENT '户口类型ID'
+ ,cfqualifications               string COMMENT '任职学历'
+ ,fhjaddress                       string COMMENT '户口所在地'
+ ,fhomeplace                       string COMMENT '家庭地址'
+ ,femployeetypeid                  string COMMENT '当前用工关系主键id'
+ ,ct_mp_gjxx_fid                   string COMMENT '岗级主键ID'
+ ,cfpositionsrankid               string COMMENT '岗级字典表ID'
+ ,persondegree_fid               string COMMENT '教育经历表主键ID'
+ ,cfpositionclassifi               string COMMENT '职位类别ID'
+ ,personposition_fid               string COMMENT '员工职业信息表主键ID'
+ ,personposition_fversion       string COMMENT '变动版本'
+ ,fenterdate                       string COMMENT '入职日期'
+ ,fleftdate                        string COMMENT '离职日期'
+ ,fjobstartdate       string COMMENT '参加工作日期'
+ ,pst_fname_l2                     string COMMENT '任职岗位名称'
+ ,job_dscrptn                      string COMMENT '岗系'
+    ,flongnumber                      string COMMENT '行政组织长ID'
+ ,fdisplayname_l2               string COMMENT '行政组织长名称'
+    ,srvng_org_fnamel2                string COMMENT '任职组织全称'
+ ,positionclassification_fnamel2   string COMMENT '岗位分类'
+ ,positionsrank_fnamel2            string COMMENT '岗级'
+ ,cfedudegree_fnamel2              string COMMENT '资格条件'
+    ,etl_time         timestamp COMMENT 'etl任务完成时间'
+    ,cfkeypostsubdivisi               string COMMENT '关键岗细分'
+)
+COMMENT '人资表'
+ROW FORMAT DELIMITED STORED AS orc TBLPROPERTIES('orc.compression'='SNAPPY')
+;
+   --1. 将基础数据写入临时表
+insert overwrite table my_dwd.dwd_erp_hr_df_tmp01
+select t1.fid --员工的系统编号
+ ,t1.feffdt --生效日期
+ ,t1.fnumber --员工工号
+ ,t1.fname_l2 as t_bd_person_fname_l2 --姓名
+ ,t1.cflastname --姓
+ ,t1.cfgivenname --名
+ ,t1.fidcardno --身份证号码
+ ,t1.fpassportno --护照号码
+ ,t1.fidcardissueorg --证件签发机关
+ ,t1.fidcardbegindate --证件开始日期
+ ,t1.fidcardenddate --证件截止日期
+ ,t1.fgender --性别
+ ,t1.fbirthday --出生日期
+ ,t1.fwedid --婚姻状况id
+ ,t1.fpoliticalfaceid --政治面貌id
+ ,t2.fname_l2 as political_fname_l2 --政治面貌中文值
+ ,t1.fnationalityid --国籍id
+ ,t3.fname_l2 as nationality_fnamel2 --国籍中文名称
+ ,t1.ffolkid --民族id
+ ,t4.fname_l2 as folk_fnamel2 --民族中文名称
+ ,t1.fnativeplace_l2 --籍贯
+ ,t1.fcell --手机号码
+ ,t1.fregresidenceid --户口类型id
+ ,t1.cfqualifications --任职学历
+ ,t1.fhjaddress --户口所在地
+ ,t1.fhomeplace --家庭地址
+  ,t1.femployeetypeid --当前用工关系主键id
+ ,t5.fid as ct_mp_gjxx_fid --岗级主键id
+ ,t5.cfpositionsrankid --岗级字典表id
+ ,t7.fid as persondegree_fid --教育经历表主键id
+ ,t5.cfpositionclassifi --职位类别id
+ ,t10.fid as personposition_fid --员工职业信息表主键id
+ ,t10.fversion as personposition_fversion --变动版本
+ ,t10.fenterdate --入职日期
+ ,t10.fleftdate --离职日期
+ ,t10.fjobstartdate --参加工作日期
+  ,t10_1.fname_l2 as pst_fname_l2 --任职岗位名称 add 2021.4.27
+  ,t10_4.fname_l2 as job_dscrptn    --岗系 add 2021.4.27
+ ,t10_5.flongnumber --行政组织长ID
+  ,t10_5.fdisplayname_l2 --行政组织长名称add 2021.4.27
+ ,t11.srvng_org_fnamel2 --任职组织全称
+  ,t5_1.fname_l2 as positionclassification_fnamel2 --岗位分类 add 2021.5.20
+  ,t5_2.fname_l2 as positionsrank_fnamel2 --岗级 add 2021.5.20
+  ,t12_1.fname_l2 as cfedudegree_fnamel2 --资格条件 add 2021.5.20
+  ,current_timestamp as etl_time --etl任务完成时间
+ from (select fid --员工的系统编号
+ ,feffdt --生效日期
+ ,fnumber --员工工号
+ ,fname_l2 --姓名
+ ,cflastname --姓
+ ,cfgivenname --名
+ ,fidcardno --身份证号码
+ ,fpassportno --护照号码
+ ,fidcardissueorg --证件签发机关
+ ,fidcardbegindate --证件开始日期
+ ,fidcardenddate --证件截止日期
+ ,fgender --性别
+ ,fbirthday --出生日期
+ ,fwedid --婚姻状况id
+ ,fpoliticalfaceid --政治面貌id
+ ,fnationalityid --国籍id
+ ,ffolkid --民族id
+ ,fnativeplace_l2 --籍贯
+ ,fcell --手机号码
+ ,fregresidenceid --户口类型id
+ ,cfqualifications --任职学历
+ ,fhjaddress --任职学历
+ ,fhomeplace --家庭地址
+ ,femployeetypeid --当前用工关系主键id
+ from sany_data.ods_shrdb_t_bd_person_df
+ where ds = '$\{datetime\}'
+  ) t1
+ --关联政治面貌字典表
+ left join ( select fid
+ ,max(fname_l2) as fname_l2
+ from sany_data.ods_shrdb_t_bd_hrpolitical_df
+ where ds = '$\{datetime\}'
+ group by fid
+ ) t2
+ on t1.fpoliticalfaceid = t2.fid
+ --关联国籍字典表
+ left join (select fid
+ ,max(fname_l2) as fname_l2
+ from sany_data.ods_shrdb_t_bd_nationality_df
+ where ds = '$\{datetime\}'
+ group by fid
+ ) t3
+ on t1.fnationalityid = t3.fid
+ --关联民族字典表
+ left join (select fid
+ ,max(fname_l2) as fname_l2
+ from sany_data.ods_shrdb_t_bd_hrfolk_df
+ where ds = '$\{datetime\}'
+ group by fid
+ ) t4
+ on t1.ffolkid = t4.fid
+ --关联岗级页签表 modify 2021.5.20
+ left join (select fid
+ ,fpersonid --人员
+ ,cfpositionsrankid --岗薪制-岗级
+ ,cfpositionclassifi --岗薪制-岗位分类
+ from (select fid
+ ,fpersonid --人员
+ ,cfpositionsrankid --岗薪制-岗级
+ ,cfpositionclassifi --岗薪制-岗位分类
+       ,fcreatetime
+       ,row_number() over (distribute by fpersonid sort by fcreatetime desc) as rn
+ from sany_data.ods_shrdb_ct_mp_gjxx_df
+ where ds = '$\{datetime\}'
+    and '$\{datetime\}' between cfstart and nvl(cfend,'99991231')
+     ) t
+    where t.rn = 1
+ ) t5
+ on t1.fid = t5.fpersonid
+ --岗位分类字典表 add 2021.5.20
+ left join (select fid
+ ,fname_l2
+ from sany_data.ods_shrdb_ct_mp_positionclassification_df
+    where ds = '$\{datetime\}'
+ ) t5_1
+ on t5.cfpositionclassifi = t5_1.fid
+ --岗级字典表 add 2021.5.20
+ left join (select fid
+ ,fname_l2
+ from sany_data.ods_shrdb_ct_mp_positionsrank_df
+    where ds = '$\{datetime\}'
+ ) t5_2
+ on t5.cfpositionsrankid = t5_2.fid
+ --关联教育经历表
+ left join (select max(fid) as fid
+ ,fpersonid
+ from sany_data.ods_shrdb_t_hr_persondegree_df
+ where ds = '$\{datetime\}'
+ group by fpersonid
+ ) t7
+ on t1.fid = t7.fpersonid
+ --员工职业信息的所属组织ID
+ left join (select fpersonid
+ ,fid
+ ,fpersondep
+ ,fenterdate
+ ,fleftdate
+ ,fjobstartdate
+ ,fversion
+     ,fprimarypositionid --主要任职,岗位ID add 2021.04.27
+ from sany_data.ods_shrdb_t_hr_personposition_df
+ where ds = '$\{datetime\}'
+ ) t10
+ on t1.fid = t10.fpersonid
+ --关联取任职岗位名称 add 2021.4.27
+ left join (select fid
+     ,fadminorgunitid
+     ,fname_l2 --任职岗位名称
+    from sany_data.ods_shrdb_t_org_position_df --职位表
+    where ds = '$\{datetime\}'
+   ) t10_1
+ on t10.fprimarypositionid = t10_1.fid
+ --关联取岗系 add 2021.4.27
+ left join (select fpositionid
+     ,fpositionstandardlibid
+    from sany_data.ods_shrdb_t_hr_relbetweenpositionandlib_df
+    where ds = '$\{datetime\}'
+   ) t10_2
+ on t10.fprimarypositionid = t10_2.fpositionid
+ left join (select fid
+     ,fpositionstandardlibsortid
+    from sany_data.ods_shrdb_t_hr_positionstandardlib_df
+    where ds = '$\{datetime\}'
+   ) t10_3
+ on t10_2.fpositionstandardlibid = t10_3.fid
+ left join (select fid
+     ,fname_l2
+    from sany_data.ods_shrdb_t_hr_positionstandardlibsort_df
+    where ds = '$\{datetime\}'
+   ) t10_4
+ on t10_3.fpositionstandardlibsortid = t10_4.fid
+ --关联取行政组织长名称 add 2021.4.27
+ left join (select fid
+ ,flongnumber --行政组织长ID
+     ,fdisplayname_l2 --任职组织名称
+    from sany_data.ods_shrdb_t_org_admin_df -- 行政组织单元表
+    where ds = '$\{datetime\}'
+   ) t10_5
+ on t10_1.fadminorgunitid = t10_5.fid
+ --关联组织信息表取任职组织全称 add 2021.5.7
+ left join (select fid --员工的系统编号
+ ,org_long_name as srvng_org_fnamel2 --任职组织全称
+ from my_dwd.dim_hr_org_fnctn_df -- 组织功能信息表
+    where ds = '$\{datetime\}'
+ ) t11
+ on t10.fpersondep = t11.fid
+ --关联取资格条件 add 2021.5.20
+ left join (select fid
+ ,fpersonid --人员
+ ,cfedudegreeid
+ from (select fid
+ ,fpersonid
+ ,cfkssj
+ ,cfjssj
+       ,cfedudegreeid
+       ,fcreatetime
+       ,row_number() over (distribute by fpersonid sort by fcreatetime desc) as rn
+ from sany_data.ods_shrdb_ct_mp_zgtj_df
+ where ds = '$\{datetime\}'
+    and '$\{datetime\}' between cfkssj and nvl(cfjssj,'99991231')
+     ) t
+    where t.rn = 1
+ ) t12
+ on t1.fid = t12.fpersonid
+ left join (select fid
+ ,fname_l2
+ from sany_data.ods_shrdb_ct_hr_edudegree_df
+    where ds = '$\{datetime\}'
+   ) t12_1
+ on t12.cfedudegreeid = t12_1.fid
+;`
+
+var tmpl2 =
+   `create external table hive_ods.ods_order_info (
+id string COMMENT '订单号',
+final_total_amount decimal(10,2) COMMENT '订单金额',
+order_status string COMMENT '订单状态',
+user_id string COMMENT '用户 id',
+out_trade_no string COMMENT '支付流水号',
+create_time string COMMENT '创建时间',
+operate_time string COMMENT '操作时间',
+province_id string COMMENT '省份 ID',
+benefit_reduce_amount decimal(10,2) COMMENT '优惠金额',
+original_total_amount decimal(10,2) COMMENT '原价金额',
+feight_fee decimal(10,2) COMMENT '运费'
+) COMMENT '订单表'
+PARTITIONED BY (dt string)
+;
+create external table hive_ods.ods_order_detail(
+id string COMMENT '订单编号',
+order_id string COMMENT '订单号',
+user_id string COMMENT '用户 id',
+sku_id string COMMENT '商品 id',
+sku_name string COMMENT '商品名称',
+order_price decimal(10,2) COMMENT '商品价格',
+sku_num bigint COMMENT '商品数量',
+create_time string COMMENT '创建时间'
+) COMMENT '订单详情表'
+PARTITIONED BY (dt string);
+
+`
+      //处理属性 为 lay-active 的所有元素事件
+      util.event('lay-active', {
+        e1: function(){
+          setinput_str(tmpl);
+        }
+        ,e2: function(){
+          setinput_str(tmpl2);
+        }
+      });
+
+  });
+
+
+</script>
+</body>
+</html>
