@@ -1,5 +1,5 @@
 # Hql&Sql 脚本处理工具及自动生成Hql代码
-
+一个sql解析的工具、Hql解析的工具 。解析hive、sql的输入、可以输出ER图、Excel、生成代码等功能，也可以二次开发
 
 ## HqlParse
 
